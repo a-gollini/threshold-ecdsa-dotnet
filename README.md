@@ -11,6 +11,37 @@ Educational implementation of **threshold ECDSA on secp256k1** in C# / .NET 10, 
 
 Generate an ECDSA key that is split across `n` parties so that any `t` of them can sign, and no single party ever holds the full private key.
 
+## How it works
+
+**Secret sharing.** A secret `x` is the constant term of a random polynomial `f` of degree `t-1` over the secp256k1 scalar field. Party `i` holds `f(i)`. Any `t` shares reconstruct `x` by Lagrange interpolation at 0; fewer reveal nothing. With Feldman VSS the dealer also publishes `a_j * G` for every coefficient, so each party can check its share: `f(i) * G == sum_j i^j * (a_j * G)`.
+
+**Key generation (DKG).** Every party acts as a dealer for a random value and sends a verified sub-share to everyone else. Party `i` adds the sub-shares it received to get its key share; the public key is the sum of all dealers' `a_0 * G`. The private key is the sum of all dealt values, and nobody ever sees it.
+
+**Threshold signing.** ECDSA needs `s = k^-1 (m + r x)`, and the inverse is the hard part to compute without reconstructing `k`:
+
+```
+parties ──DKG──▶ shares of nonce k        parties ──DKG──▶ shares of blinding w
+                    │                                           │
+                    ├── R = k*G opened  ──▶ r = R.x mod n       │
+                    │                                           │
+                    └─ open k*w  (interpolate k_i * w_i, degree 2t-2)
+                          k*w reveals nothing: w is uniform and secret
+                          shares of k^-1 = w_i * (k*w)^-1
+
+each party i:  s_i = (k^-1)_i * (m + r * x_i)      ← a share of s, degree 2t-2
+interpolate 2t-1 values s_i  ──▶  s  (normalised to low-s)
+```
+
+The result `(r, s)` is a plain ECDSA signature: any verifier needs only the public key. Because the products have degree `2t-2`, signing needs `2t-1` online parties, not `t`.
+
+**Architecture.**
+
+```
+ThresholdEcdsa.Core   curve helpers · Shamir/Feldman · DKG · threshold signer (no I/O)
+ThresholdEcdsa.Api    minimal API · KeyService (application layer) · OpenAPI
+tests/                unit tests (Core) and integration tests (Api, WebApplicationFactory)
+```
+
 ## Roadmap
 
 - [x] secp256k1 scalar/point helpers
