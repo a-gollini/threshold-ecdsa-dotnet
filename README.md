@@ -13,10 +13,17 @@ Generate an ECDSA key that is split across `n` parties so that any `t` of them c
 - [x] secp256k1 scalar/point helpers
 - [x] Shamir secret sharing + Feldman verifiable secret sharing (VSS)
 - [x] Distributed key generation (Joint-Feldman, no trusted dealer)
-- [ ] Threshold signing (multiplicative-to-additive conversion, nonce generation)
-- [ ] Signature verification against standard ECDSA
+- [x] Threshold signing (blinded nonce inversion, needs 2t-1 signers)
+- [x] Signature verification against standard ECDSA (BouncyCastle)
 - [ ] REST API (ASP.NET Core) + OpenAPI docs
 - [ ] Ports of the same design to Python and Rust
+
+## Known limitations
+
+- Everything runs in one process; there is no networking, authentication or persistence.
+- Joint-Feldman DKG lets a rushing adversary bias the public key distribution (see Gennaro et al., *Secure Distributed Key Generation for Discrete-Log Based Cryptosystems*).
+- Signing needs 2t-1 online parties and assumes honest-but-curious participants: partial signatures are not proven correct.
+- Nonce and blinding values are generated per signature with a fresh DKG; no zero-knowledge proofs, no identifiable abort.
 
 ## Build & test
 

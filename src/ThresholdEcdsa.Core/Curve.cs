@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto.EC;
+using Org.BouncyCastle.Crypto.Parameters;
 using BcBigInteger = Org.BouncyCastle.Math.BigInteger;
 using ECPoint = Org.BouncyCastle.Math.EC.ECPoint;
 
@@ -13,6 +14,8 @@ public static class Curve
     private static readonly X9ECParameters Params = CustomNamedCurves.GetByName("secp256k1");
 
     public static ECPoint G => Params.G;
+
+    public static ECDomainParameters Domain { get; } = new(Params.Curve, Params.G, Params.N, Params.H);
 
     public static BigInteger Order { get; } = ToBigInteger(Params.N);
 
@@ -43,9 +46,11 @@ public static class Curve
 
     public static ECPoint MultiplyBase(BigInteger scalar) => Multiply(G, scalar);
 
+    public static BigInteger FromBc(BcBigInteger value) => ToBigInteger(value);
+
     private static BigInteger ToBigInteger(BcBigInteger value) =>
         new(value.ToByteArrayUnsigned(), isUnsigned: true, isBigEndian: true);
 
-    private static BcBigInteger ToBc(BigInteger value) =>
+    public static BcBigInteger ToBc(BigInteger value) =>
         new(1, value.ToByteArray(isUnsigned: true, isBigEndian: true));
 }
