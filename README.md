@@ -12,7 +12,7 @@ Generate an ECDSA key that is split across `n` parties so that any `t` of them c
 
 - [x] secp256k1 scalar/point helpers
 - [x] Shamir secret sharing + Feldman verifiable secret sharing (VSS)
-- [ ] Distributed key generation (no trusted dealer)
+- [x] Distributed key generation (Joint-Feldman, no trusted dealer)
 - [ ] Threshold signing (multiplicative-to-additive conversion, nonce generation)
 - [ ] Signature verification against standard ECDSA
 - [ ] REST API (ASP.NET Core) + OpenAPI docs
