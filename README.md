@@ -17,6 +17,8 @@ Generate an ECDSA key that is split across `n` parties so that any `t` of them c
 
 **Key generation (DKG).** Every party acts as a dealer for a random value and sends a verified sub-share to everyone else. Party `i` adds the sub-shares it received to get its key share; the public key is the sum of all dealers' `a_0 * G`. The private key is the sum of all dealt values, and nobody ever sees it.
 
+**Hardened DKG.** Each dealer also broadcasts a Schnorr proof of knowledge (Fiat-Shamir) of the secret behind its constant-term commitment `C_0`, bound to the dealer and the parameters. This stops the *rogue-key attack*: without it, the last dealer could publish `C_0 = target - (sum of the other C_0)` and steer the group key to a point whose discrete log it does not know; with it, it cannot produce a valid proof. A bad proof or a malformed broadcast is reported as DkgInvalidDealingException naming the dealer. A bad share leads to a DkgComplaintException carrying evidence (the share and the dealer's commitments) that anyone can check: the complaint is justified only if the share really fails Feldman verification, so a false accusation is detectable. `deal` and `complete` expose the two rounds separately, which is how the tests play a cheating dealer.
+
 **Threshold signing.** ECDSA needs `s = k^-1 (m + r x)`, and the inverse is the hard part to compute without reconstructing `k`:
 
 ```
@@ -49,7 +51,7 @@ round 2   party i sends s_i = w_i * (kw)^-1 * (m + r * x_i)
 **Architecture.**
 
 ```
-ThresholdEcdsa.Core   curve helpers · Shamir/Feldman · DKG · DLEQ proofs · signing session (no I/O)
+ThresholdEcdsa.Core   curve helpers · Shamir/Feldman · hardened DKG · Schnorr/DLEQ proofs · signing session (no I/O)
 ThresholdEcdsa.Api    minimal API · KeyService (application layer) · OpenAPI
 tests/                unit tests (Core) and integration tests (Api, WebApplicationFactory)
 ```
@@ -62,6 +64,7 @@ tests/                unit tests (Core) and integration tests (Api, WebApplicati
 - [x] Threshold signing (blinded nonce inversion, needs 2t-1 signers)
 - [x] Signature verification against standard ECDSA (BouncyCastle)
 - [x] Zero-knowledge proofs for the signing rounds with identifiable abort (Chaum-Pedersen DLEQ)
+- [x] Hardened DKG: Schnorr proofs of knowledge against rogue-key attacks, complaints with checkable evidence
 - [x] REST API (ASP.NET Core minimal API) + OpenAPI document
 - [x] Python port: [threshold-ecdsa-python](https://github.com/a-gollini/threshold-ecdsa-python)
 - [x] Rust port: [threshold-ecdsa-rust](https://github.com/a-gollini/threshold-ecdsa-rust)
@@ -84,9 +87,9 @@ The OpenAPI document is served at `/openapi/v1.json` in the Development environm
 ## Known limitations
 
 - Everything runs in one process; there is no networking, authentication or persistence.
-- Joint-Feldman DKG lets a rushing adversary bias the public key distribution (see Gennaro et al., *Secure Distributed Key Generation for Discrete-Log Based Cryptosystems*).
+- The DKG is still Joint-Feldman: a rushing adversary can bias the distribution of the public key (see Gennaro et al., *Secure Distributed Key Generation for Discrete-Log Based Cryptosystems*). The proofs of knowledge stop rogue-key attacks, not this bias; fixing it needs the Pedersen-commitment DKG of the same paper.
 - Signing needs 2t-1 online parties. A malicious party that sends wrong signing values is identified by the proofs, but the protocol only aborts: it does not recover from the cheater.
-- Nonce and blinding values are generated per signature with a fresh DKG, which is still the plain Joint-Feldman DKG (no proofs of knowledge of the dealt secrets, no complaint round with evidence).
+- Nonce and blinding values are generated per signature with a fresh DKG, which is the DKG above. Complaints are checked against the broadcast commitments, but there are no authenticated channels, so attributing a share to its dealer would need signatures in a real deployment.
 
 ## Build & test
 
