@@ -18,8 +18,23 @@ Generate an ECDSA key that is split across `n` parties so that any `t` of them c
 - [x] Distributed key generation (Joint-Feldman, no trusted dealer)
 - [x] Threshold signing (blinded nonce inversion, needs 2t-1 signers)
 - [x] Signature verification against standard ECDSA (BouncyCastle)
-- [ ] REST API (ASP.NET Core) + OpenAPI docs
+- [x] REST API (ASP.NET Core minimal API) + OpenAPI document
 - [ ] Ports of the same design to Python and Rust
+
+## REST API
+
+```
+dotnet run --project src/ThresholdEcdsa.Api
+```
+
+| Method | Route | Description |
+|---|---|---|
+| POST | `/keys` | `{ "threshold": 2, "parties": 3 }` runs the DKG; `parties` must be at least `2*threshold-1` |
+| GET | `/keys/{id}` | Public information (compressed public key) |
+| POST | `/keys/{id}/sign` | `{ "message": "..." }` signs SHA-256(message), returns `r`, `s` (hex) |
+| POST | `/keys/{id}/verify` | `{ "message", "r", "s" }` verifies with standard ECDSA |
+
+The OpenAPI document is served at `/openapi/v1.json` in the Development environment. Key shares are held in memory only and are never returned by the API.
 
 ## Known limitations
 
