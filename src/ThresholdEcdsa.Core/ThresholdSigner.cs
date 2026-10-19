@@ -30,8 +30,6 @@ public static class ThresholdSigner
         var indices = signers.Select(s => s.Index).ToList();
         var parties = signers.Max(s => s.Index);
 
-        var m = HashToScalar(messageHash);
-
         while (true)
         {
             // Fresh nonce and blinding shares for the participating parties. A real deployment would
@@ -39,26 +37,15 @@ public static class ThresholdSigner
             var nonce = Select(DistributedKeyGeneration.Run(threshold, parties), indices);
             var blind = Select(DistributedKeyGeneration.Run(threshold, parties), indices);
 
-            var bigR = nonce[0].PublicKey;
-            var r = Curve.Mod(Curve.FromBc(bigR.AffineXCoord.ToBigInteger()));
-            if (r.IsZero) continue;
-
-            var kw = Interpolate(indices, signers.Select((_, i) => Curve.Mod(nonce[i].SecretShare * blind[i].SecretShare)));
-            if (kw.IsZero) continue;
-            var kwInverse = Curve.Inverse(kw);
-
-            var partials = signers.Select((signer, i) =>
+            try
             {
-                var kInverseShare = Curve.Mod(blind[i].SecretShare * kwInverse);
-                return Curve.Mod(kInverseShare * (m + r * signer.SecretShare));
-            });
-
-            var s = Interpolate(indices, partials);
-            if (s.IsZero) continue;
-
-            // Normalise to low-s (BIP-62 / Bitcoin style) so signatures are non-malleable.
-            if (s > Curve.Order / 2) s = Curve.Order - s;
-            return new EcdsaSignature(r, s);
+                var session = new SigningSession(signers, nonce, blind, messageHash);
+                return session.Finish(session.RoundTwo(session.RoundOne()));
+            }
+            catch (DegenerateNonceException)
+            {
+                // Probability about 2^-256 per attempt; draw fresh randomness.
+            }
         }
     }
 
@@ -69,12 +56,9 @@ public static class ThresholdSigner
         return verifier.VerifySignature(messageHash.ToArray(), Curve.ToBc(signature.R), Curve.ToBc(signature.S));
     }
 
-    private static BigInteger HashToScalar(ReadOnlySpan<byte> hash) =>
+    internal static BigInteger HashToScalar(ReadOnlySpan<byte> hash) =>
         Curve.Mod(new BigInteger(hash[..Math.Min(hash.Length, 32)], isUnsigned: true, isBigEndian: true));
 
     private static List<KeyShare> Select(IReadOnlyList<KeyShare> all, IReadOnlyList<int> indices) =>
         indices.Select(i => all[i - 1]).ToList();
-
-    private static BigInteger Interpolate(IReadOnlyList<int> indices, IEnumerable<BigInteger> values) =>
-        Curve.Mod(values.Select((v, i) => v * Shamir.LagrangeCoefficientAtZero(indices[i], indices)).Aggregate(BigInteger.Zero, (a, b) => a + b));
 }

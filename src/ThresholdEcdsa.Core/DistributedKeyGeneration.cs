@@ -3,8 +3,14 @@ using ECPoint = Org.BouncyCastle.Math.EC.ECPoint;
 
 namespace ThresholdEcdsa.Core;
 
-/// <summary>What a single party holds after key generation.</summary>
-public sealed record KeyShare(int Index, BigInteger SecretShare, ECPoint PublicKey);
+/// <summary>
+/// What a single party holds after key generation. <paramref name="PublicShares"/> holds the public image
+/// x_j * G of every party's share (entry j-1 for party j): it is public and lets anyone check proofs about shares.
+/// </summary>
+public sealed record KeyShare(int Index, BigInteger SecretShare, ECPoint PublicKey, IReadOnlyList<ECPoint> PublicShares)
+{
+    public ECPoint PublicShareOf(int index) => PublicShares[index - 1];
+}
 
 public sealed class DkgComplaintException(int dealer, int recipient)
     : Exception($"Party {recipient} received an invalid share from party {dealer}.")
@@ -43,14 +49,18 @@ public static class DistributedKeyGeneration
             secretShares[recipient] = Curve.Mod(sum);
         }
 
-        // The group public key is the sum of each dealer's constant-term commitment.
-        var publicKey = dealings
-            .Select(d => d.Commitments.PublicKey)
-            .Aggregate((a, b) => a.Add(b))
-            .Normalize();
+        // Summing every dealer's commitments coefficient-wise gives commitments to the group polynomial.
+        // Its constant term is the group public key, and evaluating it at i gives party i's public share.
+        var groupCommitments = new FeldmanCommitments(Enumerable.Range(0, threshold)
+            .Select(j => dealings.Select(d => d.Commitments.Coefficients[j]).Aggregate((a, b) => a.Add(b)).Normalize())
+            .ToList());
+        var publicKey = groupCommitments.PublicKey;
+        var publicShares = Enumerable.Range(1, parties)
+            .Select(i => Shamir.PublicShare(i, groupCommitments))
+            .ToList();
 
         return secretShares
-            .Select((s, i) => new KeyShare(i + 1, s, publicKey))
+            .Select((s, i) => new KeyShare(i + 1, s, publicKey, publicShares))
             .ToList();
     }
 }

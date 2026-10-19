@@ -35,16 +35,20 @@ public static class Shamir
     }
 
     /// <summary>Checks s_i * G == sum_j (i^j * C_j).</summary>
-    public static bool Verify(Share share, FeldmanCommitments commitments)
+    public static bool Verify(Share share, FeldmanCommitments commitments) =>
+        Curve.MultiplyBase(share.Value).Equals(PublicShare(share.Index, commitments));
+
+    /// <summary>The public image of party i's share, sum_j (i^j * C_j) = f(i) * G, computable by anyone.</summary>
+    public static ECPoint PublicShare(int index, FeldmanCommitments commitments)
     {
-        var expected = commitments.Coefficients[0];
+        var result = commitments.Coefficients[0];
         var power = BigInteger.One;
         for (var j = 1; j < commitments.Coefficients.Count; j++)
         {
-            power = Curve.Mod(power * share.Index);
-            expected = expected.Add(Curve.Multiply(commitments.Coefficients[j], power));
+            power = Curve.Mod(power * index);
+            result = result.Add(Curve.Multiply(commitments.Coefficients[j], power));
         }
-        return Curve.MultiplyBase(share.Value).Equals(expected.Normalize());
+        return result.Normalize();
     }
 
     public static BigInteger Reconstruct(IReadOnlyList<Share> shares)
