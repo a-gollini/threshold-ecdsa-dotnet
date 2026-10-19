@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ThresholdEcdsa.Core/ThresholdEcdsa.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ThresholdEcdsa.Core.Tests/ThresholdEcdsa.Core.Tests.csproj" />
+  </Folder>
+</Solution>
