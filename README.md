@@ -50,7 +50,8 @@ tests/                unit tests (Core) and integration tests (Api, WebApplicati
 - [x] Threshold signing (blinded nonce inversion, needs 2t-1 signers)
 - [x] Signature verification against standard ECDSA (BouncyCastle)
 - [x] REST API (ASP.NET Core minimal API) + OpenAPI document
-- [ ] Ports of the same design to Python and Rust
+- [x] Python port: [threshold-ecdsa-python](https://github.com/a-gollini/threshold-ecdsa-python)
+- [ ] Rust port
 
 ## REST API
 
