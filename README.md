@@ -51,7 +51,7 @@ tests/                unit tests (Core) and integration tests (Api, WebApplicati
 - [x] Signature verification against standard ECDSA (BouncyCastle)
 - [x] REST API (ASP.NET Core minimal API) + OpenAPI document
 - [x] Python port: [threshold-ecdsa-python](https://github.com/a-gollini/threshold-ecdsa-python)
-- [ ] Rust port
+- [x] Rust port: [threshold-ecdsa-rust](https://github.com/a-gollini/threshold-ecdsa-rust)
 
 ## REST API
 
